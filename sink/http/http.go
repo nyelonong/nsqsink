@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/nyelonong/nsqsink/sink"
 )
 
 var (
@@ -106,7 +108,7 @@ func WithHeader(headers map[string]interface{}) Option {
 	}
 }
 
-func NewClient(url, method string, options ...Option) (*Client, error) {
+func NewSink(url, method string, options ...Option) (sink.Sinker, error) {
 	h := &Client{
 		Headers: map[string]interface{}{},
 		client: &http.Client{
@@ -120,7 +122,7 @@ func NewClient(url, method string, options ...Option) (*Client, error) {
 
 	for _, option := range options {
 		if err := option(h); err != nil {
-			return h, err
+			return h, fmt.Errorf("failed to register option to HTTP Sink because %s", err.Error())
 		}
 	}
 
@@ -132,23 +134,23 @@ func (c *Client) Write(ctx context.Context, data []byte) ([]byte, error) {
 
 	resp, err := c.do(ctx, data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to call http endpoint because %s", err.Error())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, err
+		return nil, fmt.Errorf("failed to get 2xx response, got %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read resp body because %s", err.Error())
 	}
 
 	return body, nil
 }
 
-func (c *Client) Close() error {
+func (c *Client) Close(ctx context.Context) error {
 	c.client.CloseIdleConnections()
 	return nil
 }

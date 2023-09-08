@@ -17,7 +17,7 @@ func TestHTTPWrite(t *testing.T) {
 	}))
 	defer svr.Close()
 
-	c, err := NewClient(svr.URL, http.MethodPost,
+	c, err := NewSink(svr.URL, http.MethodPost,
 		WithTimeout(1*time.Second),
 		WithHeader(map[string]interface{}{
 			"key": "value",
