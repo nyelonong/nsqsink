@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -35,7 +36,7 @@ type Client struct {
 	URL string `json:"url" yaml:"url"`
 
 	// Headers is a map of headers to add to the request.
-	Headers map[string]string `json:"headers" yaml:"headers"`
+	Headers map[string]interface{} `json:"headers" yaml:"headers"`
 
 	// Backoff is the amount of time to wait before retrying a failed request.
 	Backoff time.Duration `json:"backoff" yaml:"backoff"`
@@ -62,6 +63,17 @@ type Client struct {
 	DataFormat string `json:"data_format" yaml:"data_format"`
 }
 
+type RetryConfig struct {
+	// Backoff is the amount of time to wait before retrying a failed request.
+	Backoff time.Duration `json:"backoff" yaml:"backoff"`
+
+	// MaxRetries is the maximum number of times to retry a failed request.
+	MaxRetries int `json:"max_retries" yaml:"max_retries"`
+
+	// RetryStatusCode is the status code to retry on.
+	RetryStatusCode []int `json:"retry_status_code" yaml:"retry_status_code"`
+}
+
 type BasicAuth struct {
 	Username string
 	Password string
@@ -70,18 +82,38 @@ type BasicAuth struct {
 type Option func(*Client) error
 
 func WithTimeout(timeout time.Duration) Option {
-	return func(h *Client) error {
-		h.client.Timeout = timeout
+	return func(c *Client) error {
+		c.client.Timeout = timeout
 		return nil
 	}
 }
 
-func NewClient(options ...Option) (*Client, error) {
+func WithRetry(conf RetryConfig) Option {
+	return func(c *Client) error {
+		c.Backoff = conf.Backoff
+		c.MaxRetries = conf.MaxRetries
+		c.RetryStatusCode = conf.RetryStatusCode
+		return nil
+	}
+}
+
+func WithHeader(headers map[string]interface{}) Option {
+	return func(c *Client) error {
+		for k, v := range headers {
+			c.Headers[k] = v
+		}
+		return nil
+	}
+}
+
+func NewClient(url, method string, options ...Option) (*Client, error) {
 	h := &Client{
-		Headers: map[string]string{},
+		Headers: map[string]interface{}{},
 		client: &http.Client{
 			Timeout: DefaultTimeout,
 		},
+		URL:        url,
+		Method:     method,
 		Backoff:    DefaultBackoff,
 		MaxRetries: DefaultMaxRetries,
 	}
@@ -133,7 +165,7 @@ func (c *Client) do(ctx context.Context, body interface{}) (*http.Response, erro
 	}
 
 	for key, value := range c.Headers {
-		req.Header.Set(key, value)
+		req.Header.Set(key, fmt.Sprint(value))
 	}
 
 	req = req.WithContext(ctx)
