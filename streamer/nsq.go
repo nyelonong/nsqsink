@@ -5,6 +5,7 @@ import (
 
 	"github.com/nsqio/go-nsq"
 	"github.com/nyelonong/nsqsink/handler"
+	"github.com/nyelonong/nsqsink/message"
 )
 
 // NSQModule struct
@@ -38,11 +39,15 @@ func (m *NSQModule) RegisterConsumer(ctx context.Context, e Event, h handler.Han
 	// set log level
 	consumer.SetLoggerLevel(nsq.LogLevelError)
 
+	handlerFn := func(msg *nsq.Message) error {
+		return h.Handle(message.New(msg))
+	}
+
 	// add handler
 	if cfg.Concurrent > 0 {
-		consumer.AddConcurrentHandlers(nsq.HandlerFunc(h.Handle), cfg.Concurrent)
+		consumer.AddConcurrentHandlers(nsq.HandlerFunc(handlerFn), cfg.Concurrent)
 	} else {
-		consumer.AddHandler(nsq.HandlerFunc(h.Handle))
+		consumer.AddHandler(nsq.HandlerFunc(handlerFn))
 	}
 
 	return nil
@@ -51,11 +56,19 @@ func (m *NSQModule) RegisterConsumer(ctx context.Context, e Event, h handler.Han
 // Run method
 // method to run all handler in the consumer
 func (m *NSQModule) Run() error {
+
+	// need to start all consumer
+
 	return nil
 }
 
 // Stop method
 // method to stop all consumer handler in the consumer
 func (m *NSQModule) Stop() error {
+
+	// need to stop all handler
+
+	// close consumer
+
 	return nil
 }
