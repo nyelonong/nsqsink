@@ -1,11 +1,27 @@
 package message
 
-import "time"
+import (
+	"time"
 
-type Message interface {
+	"github.com/nsqio/go-nsq"
+)
+
+// Messager
+// contract for message data
+type Messager interface {
 	Finish()
 	Requeue(delay time.Duration)
 	RequeueWithoutBackoff(delay time.Duration)
-	Attempts() uint16
-	Body() []byte
+	GetAttempts() uint16
+	GetBody() []byte
+}
+
+type Message struct {
+	*nsq.Message
+}
+
+// New
+// return message object
+func New(msg *nsq.Message) Messager {
+	return Message{msg}
 }

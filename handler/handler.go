@@ -5,5 +5,5 @@ import (
 )
 
 type Handler interface {
-	Handle(msg message.Message) error
+	Handle(msg message.Messager) error
 }
